@@ -56,7 +56,6 @@ def main():
         if args.xvs_line is None or args.xhs_line is None:
             raise SystemExit("--hw requires --xvs-line and --xhs-line")
         # Use derived FT and RT for scheduling
-        from .timing import compute_timing
         dt = compute_timing(cfg)
         run_hardware_session(
             frames=cfg.frames,
