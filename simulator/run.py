@@ -11,6 +11,7 @@ from .timing import compute_timing
 from .signals import generate_xvs, generate_xhs, exposure_window_for_line
 from .led import single_flash_at_rt, per_line_pwm, overlaps
 from .visualize import plot_timeline
+from .hw_gpio import run_hardware_session
 
 
 def main():
@@ -26,6 +27,14 @@ def main():
     parser.add_argument("--show-pwm", action="store_true", help="Also show per-line PWM overlay")
     parser.add_argument("--pwm-freq-khz", type=float, default=None, help="PWM frequency (kHz)")
     parser.add_argument("--print-details", "--print-detail", action="store_true", help="Print XVS, XHS(every 500), and LED times to terminal")
+    # Hardware mode
+    parser.add_argument("--hw", action="store_true", help="Use GPIO hardware capture instead of synthetic timing")
+    parser.add_argument("--gpiochip", type=str, default="gpiochip0", help="gpiod chip name")
+    parser.add_argument("--xvs-line", type=int, default=None, help="XVS GPIO line offset")
+    parser.add_argument("--xhs-line", type=int, default=None, help="XHS GPIO line offset")
+    parser.add_argument("--led-line", type=int, default=None, help="LED GPIO line offset (optional)")
+    parser.add_argument("--xhs-samples", type=int, default=10, help="Number of XHS intervals to estimate H")
+    parser.add_argument("--dry-led", action="store_true", help="Do not toggle LED line in hardware mode")
 
     args = parser.parse_args()
 
@@ -41,6 +50,26 @@ def main():
         pwm_frequency_khz=args.pwm_freq_khz if args.pwm_freq_khz is not None else DEFAULT_CONFIG.pwm_frequency_khz,
         frames=args.frames if args.frames is not None else DEFAULT_CONFIG.frames,
     )
+
+    # Hardware capture mode
+    if args.hw:
+        if args.xvs_line is None or args.xhs_line is None:
+            raise SystemExit("--hw requires --xvs-line and --xhs-line")
+        # Use derived FT and RT for scheduling
+        from .timing import compute_timing
+        dt = compute_timing(cfg)
+        run_hardware_session(
+            frames=cfg.frames,
+            gpiochip=args.gpiochip,
+            xvs_offset=args.xvs_line,
+            xhs_offset=args.xhs_line,
+            led_offset=args.led_line,
+            rolling_time_s=dt.rolling_time_s,
+            ft_s=dt.ft_s,
+            xhs_samples=args.xhs_samples,
+            dry_led=args.dry_led,
+        )
+        return
 
     dt = compute_timing(cfg)
     xvs = generate_xvs(dt, frames=cfg.frames)

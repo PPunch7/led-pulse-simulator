@@ -42,4 +42,67 @@ Notes
 - This is a timing model for understanding; it does not interface with hardware GPIO.
 - Units are carefully tracked (seconds, microseconds, lines, clocks).
 
+---------------------------------------------------------------------------------------------------------------------------------
+
+## Using with real hardware (Linux + libgpiod)
+
+Prerequisites
+- Linux on your board (e.g., Radxa ROCK 5C)
+- Python 3 and a virtualenv (optional)
+- libgpiod userspace tools and Python bindings:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y gpiod libgpiod-dev python3-libgpiod
+```
+
+Identify GPIO chips and line offsets
+1) List chips:
+```bash
+gpiodetect
+```
+2) Inspect lines (repeat per chip):
+```bash
+gpioinfo gpiochip0
+gpioinfo gpiochip1
+```
+Look for the line number (offset) you wired to XVS, XHS, and LED. The number shown as "line N:" is the offset.
+
+Verify signals (optional but recommended)
+- XVS rising edges (about your frame rate, e.g., ~60 Hz):
+```bash
+gpiomon --rising --num-events 5 gpiochipX <xvs_offset>
+```
+- XHS is very high frequency (~200 kHz at 4K/60); userspace may miss edges. It's fine—hardware mode mainly uses XVS for flash scheduling (RT). We only sample a few XHS edges to estimate H optionally.
+
+Verify LED line (be careful with your driver circuit)
+```bash
+gpioset gpiochipY <led_offset>=1   # ON
+gpioset gpiochipY <led_offset>=0   # OFF
+```
+
+Run the simulator in hardware mode
+- From the project root after installing Python deps:
+```bash
+python -m simulator.run --hw \
+  --frames 5 \
+  --gpiochip gpiochipX \
+  --xvs-line <xvs_offset> \
+  --xhs-line <xhs_offset> \
+  --led-line <led_offset>
+```
+
+Flags
+- `--hw`: enable hardware capture mode (uses libgpiod)
+- `--gpiochip`: chip name from gpiodetect (e.g., gpiochip0)
+- `--xvs-line`, `--xhs-line`: line offsets (integers) from gpioinfo
+- `--led-line`: LED output line offset (optional; omit or use `--dry-led` to avoid toggling)
+- `--xhs-samples`: number of XHS intervals to measure H (default 10). If XHS is too fast, use `--xhs-samples 0`.
+- `--dry-led`: schedule but do not toggle the LED line
+
+Notes on timing accuracy
+- Userspace scheduling introduces jitter at microsecond scales. For production-grade precision, prefer a hardware timer/PWM, a kernel driver, or an external MCU triggered by XVS.
+- Ensure the kernel/device tree does not claim your chosen GPIO lines (check the "consumer" field in `gpioinfo`).
+
+
 
