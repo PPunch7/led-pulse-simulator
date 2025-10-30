@@ -30,6 +30,8 @@ def run_hardware_session(
     ft_s: float,
     xhs_samples: int,
     dry_led: bool,
+    warmup_delay_s: float,
+    warmup_xvs_count: int,
 ) -> None:
     """Capture XVS/XHS from GPIO and fire LED at RT for each frame.
 
@@ -62,8 +64,16 @@ def run_hardware_session(
         ev = line.event_read()
         return ev.sec + ev.nsec / 1e9
 
+    # Optional fixed delay warm-up
+    if warmup_delay_s > 0:
+        time.sleep(warmup_delay_s)
+
     # Sync on first XVS
     first_xvs_s = read_event_ts(xvs_line, timeout_s=10.0)
+
+    # Skip a number of XVS edges to allow sensor to stabilize
+    for _ in range(max(0, warmup_xvs_count)):
+        first_xvs_s = read_event_ts(xvs_line, timeout_s=5.0)
 
     # Measure H from a handful of XHS intervals to report
     h_samples: List[float] = []

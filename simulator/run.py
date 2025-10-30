@@ -35,6 +35,8 @@ def main():
     parser.add_argument("--led-line", type=int, default=None, help="LED GPIO line offset (optional)")
     parser.add_argument("--xhs-samples", type=int, default=10, help="Number of XHS intervals to estimate H")
     parser.add_argument("--dry-led", action="store_true", help="Do not toggle LED line in hardware mode")
+    parser.add_argument("--hw-delay-s", type=float, default=0.0, help="Warm-up delay seconds before capturing (HW mode)")
+    parser.add_argument("--hw-warmup-xvs", type=int, default=0, help="Number of XVS edges to skip before capturing (HW mode)")
 
     args = parser.parse_args()
 
@@ -67,6 +69,8 @@ def main():
             ft_s=dt.ft_s,
             xhs_samples=args.xhs_samples,
             dry_led=args.dry_led,
+            warmup_delay_s=args.hw_delay_s,
+            warmup_xvs_count=args.hw_warmup_xvs,
         )
         return
 

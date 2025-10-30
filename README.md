@@ -92,6 +92,22 @@ python -m simulator.run --hw \
   --led-line <led_offset>
 ```
 
+Handle sensor warm-up (unstable XVS/XHS right after power-up)
+- If early frames/edges are unstable, delay and/or skip initial XVS edges before capturing:
+```bash
+# Add a fixed delay (e.g., 2 seconds) before starting
+python -m simulator.run --hw --hw-delay-s 2 \
+  --gpiochip gpiochipX --xvs-line <xvs> --xhs-line <xhs> --led-line <led>
+
+# Skip first N XVS pulses (e.g., 5 frames) to let timing stabilize
+python -m simulator.run --hw --hw-warmup-xvs 5 \
+  --gpiochip gpiochipX --xvs-line <xvs> --xhs-line <xhs> --led-line <led>
+
+# Combine both if needed
+python -m simulator.run --hw --hw-delay-s 1.5 --hw-warmup-xvs 3 \
+  --gpiochip gpiochipX --xvs-line <xvs> --xhs-line <xhs> --led-line <led>
+```
+
 Flags
 - `--hw`: enable hardware capture mode (uses libgpiod)
 - `--gpiochip`: chip name from gpiodetect (e.g., gpiochip0)
@@ -99,6 +115,8 @@ Flags
 - `--led-line`: LED output line offset (optional; omit or use `--dry-led` to avoid toggling)
 - `--xhs-samples`: number of XHS intervals to measure H (default 10). If XHS is too fast, use `--xhs-samples 0`.
 - `--dry-led`: schedule but do not toggle the LED line
+- `--hw-delay-s`: warm-up delay (seconds) before capturing in HW mode
+- `--hw-warmup-xvs`: number of initial XVS edges to skip before capturing in HW mode
 
 Notes on timing accuracy
 - Userspace scheduling introduces jitter at microsecond scales. For production-grade precision, prefer a hardware timer/PWM, a kernel driver, or an external MCU triggered by XVS.
